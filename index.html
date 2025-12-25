@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Employee Tracker & Chat</title>
+<style>
+ body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+ #login, #mainApp { display: none; padding: 20px;}
+ #chat { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <button onclick="signup()">Sign Up</button>
+</div>
+
+<div id="mainApp">
+  <h2>Work Dashboard</h2>
+  <button onclick="logout()">Logout</button><br><br>
+
+  <h3>Submit Task</h3>
+  <input id="taskInput" placeholder="What are you working on?">
+  <button onclick="sendTask()">Submit</button>
+  <div id="taskList"></div>
+
+  <hr>
+  <h3>Group Chat</h3>
+  <div id="chat"></div>
+  <input id="messageInput" placeholder="Type a message...">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDJbGtiCxLUH4QHCG2Xc9Nv-TrE2X4X8aM",
+  authDomain: "ananmanan-e99b8.firebaseapp.com",
+  projectId: "ananmanan-e99b8",
+};
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('login').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    loadTasks();
+    loadMessages();
+  } else {
+    document.getElementById('login').style.display='block';
+    document.getElementById('mainApp').style.display='none';
+  }
+});
+
+function signup() {
+  const email = document.getElementById('email').value;
+  const pass = document.getElementById('password').value;
+  auth.createUserWithEmailAndPassword(email, pass)
+    .catch(err => alert(err.message));
+}
+
+function login() {
+  const email = document.getElementById('email').value;
+  const pass = document.getElementById('password').value;
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(err => alert(err.message));
+}
+
+function logout() { auth.signOut(); }
+
+function sendTask() {
+  const text = document.getElementById('taskInput').value;
+  db.collection('tasks').add({
+    uid: auth.currentUser.uid,
+    email: auth.currentUser.email,
+    task: text,
+    timestamp: Date.now()
+  });
+}
+
+function loadTasks() {
+  db.collection('tasks').orderBy('timestamp', 'desc')
+    .onSnapshot(snap => {
+      let html = '';
+      snap.forEach(doc => {
+        const t = doc.data();
+        html += `<div><b>${t.email}:</b> ${t.task}</div>`;
+      });
+      document.getElementById('taskList').innerHTML = html;
+    });
+}
+
+function sendMessage() {
+  const msg = document.getElementById('messageInput').value;
+  db.collection('chat').add({
+    email: auth.currentUser.email,
+    message: msg,
+    timestamp: Date.now()
+  });
+}
+
+function loadMessages() {
+  db.collection('chat').orderBy('timestamp')
+    .onSnapshot(snap => {
+      let html = '';
+      snap.forEach(doc => {
+        const m = doc.data();
+        html += `<div><b>${m.email}:</b> ${m.message}</div>`;
+      });
+      document.getElementById('chat').innerHTML = html;
+    });
+}
+</script>
+
+</body>
+</html>
